@@ -6,6 +6,7 @@ from pygame.sprite import Group
 
 from alien import Alien
 from bullet import Bullet
+from fast_alien import FastAlien
 from game_event_handler import GameEventHandler
 from settings import Settings
 from ship import Ship
@@ -45,7 +46,7 @@ class AlienInvasion:
         """Cria uma frota de alienígenas."""
         # Cria um alienígena e calcula o número de alienígenas em uma linha
         # O espaçamento entre os alienígenas é igual a um alienígena
-        alien = Alien(self.screen, self.settings)
+        alien = FastAlien(self.screen, self.settings)
         alien_width = alien.rect.width
         alien_height = alien.rect.height
         available_space_x = self.settings.screen_width - (2 * alien_width)
@@ -61,7 +62,7 @@ class AlienInvasion:
             # Cria a primeira linha de alienígenas
             for alien_number in range(number_aliens_x):
                 # Cria um alienígena e o posiciona na linha
-                alien = Alien(self.screen, self.settings)
+                alien = FastAlien(self.screen, self.settings)
                 alien.x = float(
                     alien_width + 2 * alien_width * alien_number
                 )
