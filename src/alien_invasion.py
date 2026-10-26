@@ -1,3 +1,4 @@
+
 import sys
 
 import pygame
@@ -28,6 +29,7 @@ class AlienInvasion:
         # Mudando a cor do plano de fundo em RGB
         self.bg_color = self.settings.bg_color
 
+        # Criando grupos para armazenar os projéteis e alienígenas
         self.bullets: Group[Bullet] = pygame.sprite.Group()
         self.aliens: Group[Alien] = pygame.sprite.Group()
 
@@ -40,6 +42,7 @@ class AlienInvasion:
         alien_height = alien.rect.height
         available_space_x = self.settings.screen_width - (2 * alien_width)
         number_aliens_x = available_space_x // (2 * alien_width)
+
         ship_height = self.ship.rect.height
         available_space_y = (
             self.settings.screen_height - (3 * alien_height) - ship_height
@@ -51,110 +54,171 @@ class AlienInvasion:
             for alien_number in range(number_aliens_x):
                 # Cria um alienígena e o posiciona na linha
                 alien = Alien(self.screen, self.settings)
-                alien.x = float(alien_width + 2 * alien_width * alien_number)
+                alien.x = float(
+                    alien_width + 2 * alien_width * alien_number
+                )
                 alien.rect.x = int(alien.x)
-                alien.rect.y = int(alien_height + 2 * alien_height * row_number)
+                alien.rect.y = int(
+                    alien_height + 2 * alien_height * row_number
+                )
                 self.aliens.add(alien)
+
+    def _check_events(self) -> None:
+        """Responde aos eventos de pressionamento de teclas e mouse."""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+
+            elif event.type == pygame.KEYDOWN:
+                self._check_keydown_events(event)
+
+            elif event.type == pygame.KEYUP:
+                self._check_keyup_events(event)
+
+        # Atualiza continuamente o estado das teclas
+        keys = pygame.key.get_pressed()
+        self.ship.moving_right = bool(keys[pygame.K_RIGHT])
+        self.ship.moving_left = bool(keys[pygame.K_LEFT])
+
+    def _check_keydown_events(self, event: pygame.event.Event) -> None:
+        """Detecta quando uma tecla é pressionada."""
+        if event.key == pygame.K_RIGHT:
+            # Verifica se a tecla pressionada é a seta para a direita
+            self.ship.moving_right = True
+
+        elif event.key == pygame.K_LEFT:
+            # Verifica se a tecla pressionada é a seta para a esquerda
+            self.ship.moving_left = True
+
+        elif event.key == pygame.K_SPACE:
+            # Verifica se a tecla pressionada é a barra de espaço
+            self._fire_bullet()
+
+    def _check_keyup_events(self, event: pygame.event.Event) -> None:
+        """Detecta quando uma tecla é liberada."""
+        if event.key == pygame.K_RIGHT:
+            # Verifica se a tecla liberada é a seta para a direita
+            self.ship.moving_right = False
+
+        elif event.key == pygame.K_LEFT:
+            # Verifica se a tecla liberada é a seta para a esquerda
+            self.ship.moving_left = False
+
+    def _fire_bullet(self) -> None:
+        """Cria um novo projétil quando o limite permitido não foi atingido."""
+        # Verifica se o número de projéteis na tela excede o limite permitido
+        if len(self.bullets) < self.settings.bullet_allowed:
+            # Cria um novo projétil
+            new_bullet = Bullet(
+                self.screen, self.settings, self.ship
+            )
+
+            # Adiciona o novo projétil ao grupo de projéteis
+            self.bullets.add(new_bullet)
 
     def _check_bullet_alien_collisions(self) -> None:
         """Verifica colisões entre projéteis e alienígenas."""
-        pygame.sprite.groupcollide(self.bullets, self.aliens, True, True)
+        # Verifica se algum projétil atingiu um alienígena
+        # Em caso afirmativo, remove o projétil e o alienígena atingido
+        pygame.sprite.groupcollide(
+            self.bullets, self.aliens, True, True
+        )
+
+    def _update_bullets(self) -> None:
+        """Atualiza os projéteis e remove aqueles que saíram da tela."""
+        # Atualiza a posição de cada projétil no grupo de projéteis
+        self.bullets.update()
+
+        # Verifica se algum projétil saiu da tela
+        for bullet in self.bullets.copy():
+            if bullet.rect.bottom <= 0:
+                # Remove o projétil que saiu da tela
+                self.bullets.remove(bullet)
+
+        # Verifica se algum projétil atingiu um alienígena
+        # Em caso afirmativo, remove o projétil e o alienígena atingido
+        self._check_bullet_alien_collisions()
+
+    def _check_fleet_edges(self) -> None:
+        """Verifica se algum alienígena atingiu a borda da tela."""
+        for alien in self.aliens.sprites():
+            if alien.check_edges():
+                self._change_fleet_direction()
+                break
+
+    def _change_fleet_direction(self) -> None:
+        """Faz a frota descer e inverte sua direção."""
+        # Atualiza a posição de cada alienígena no grupo de alienígenas
+        for alien in self.aliens.sprites():
+            # Move cada alienígena para baixo com base na velocidade de descida da frota
+            alien.rect.y += self.settings.fleet_drop_speed
+
+        # Inverte a direção da frota para que os alienígenas se movam
+        # para o lado oposto na próxima atualização
+        self.settings.fleet_direction *= -1
+
+    def _check_ship_alien_collisions(self) -> None:
+        """Verifica se a nave colidiu com algum alienígena."""
+        if pygame.sprite.spritecollideany(self.ship, self.aliens):
+            # Imprime uma mensagem no console indicando que a nave foi atingida
+            print("A nave foi atingida!")
+
+            # Encerra o jogo
+            sys.exit()
+
+    def _update_aliens(self) -> None:
+        """Atualiza a posição e o comportamento dos alienígenas."""
+        # Verifica se algum alienígena atingiu a borda da tela
+        self._check_fleet_edges()
+
+        # Atualiza a posição de cada alienígena no grupo de alienígenas
+        self.aliens.update()
+
+        # Verifica se a nave colidiu com algum alienígena
+        self._check_ship_alien_collisions()
+
+    def _update_screen(self) -> None:
+        """Atualiza as imagens na tela e muda para a nova tela."""
+        # Redesenha a tela a cada passagem pelo laço
+        self.screen.fill(self.bg_color)
+
+        # Redesenha a nave em sua posição atual
+        self.ship.blitme()
+
+        # alien.drawme() # Desenha os alienígenas presentes no grupo de alienígenas na tela
+        self.aliens.draw(
+            self.screen
+        )  # Desenha os alienígenas presentes no grupo de alienígenas na tela
+
+        # Atualiza a representação visual de cada projétil
+        for bullet in self.bullets.sprites():
+            bullet.draw_bullet()
+
+        # Torna visível a tela mais recente
+        pygame.display.flip()
 
     def run_game(self) -> None:
         """Cria um laço de repetição para a tela sempre ficar visível até
         que o usuário decida fechar a janela."""
 
-        self.create_fleet()  # Cria a frota de alienígenas para ser desenhada na tela
+        # Cria a frota de alienígenas para ser desenhada na tela
+        self.create_fleet()
 
         while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    # Detecta quando uma tecla é pressionada
-                    if event.key == pygame.K_RIGHT:
-                        self.ship.moving_right = True
-
-                    elif event.key == pygame.K_LEFT:
-                        self.ship.moving_left = True
-
-                    elif (
-                        event.key == pygame.K_SPACE
-                        and len(self.bullets) < self.settings.bullet_allowed
-                    ):
-                        # Dispara apenas se houver espaço para novos projéteis
-                        new_bullet = Bullet(self.screen, self.settings, self.ship)
-                        self.bullets.add(new_bullet)
-
-                elif event.type == pygame.KEYUP:
-                    # Detecta quando uma tecla é liberada
-                    if event.key == pygame.K_RIGHT:
-                        self.ship.moving_right = False
-
-                    elif event.key == pygame.K_LEFT:
-                        self.ship.moving_left = False
-                        # Atualiza continuamente o estado das teclas
-            keys = pygame.key.get_pressed()
-            self.ship.moving_right = keys[pygame.K_RIGHT]
-            self.ship.moving_left = keys[pygame.K_LEFT]
-
-            # Redesenha a tela a cada passagem pelo laço
-            self.screen.fill(self.bg_color)
-
-            # Redesenha a nave em sua posição atual
-            self.ship.blitme()
-
-            # alien.drawme() # Desenha os alienígenas presentes no grupo de alienígenas na tela
-            self.aliens.draw(
-                self.screen
-            )  # Desenha os alienígenas presentes no grupo de alienígenas na tela
+            # Verifica os eventos de teclado e fechamento
+            self._check_events()
 
             # Atualiza a posição da nave com base na variável de controle
             self.ship.update()
 
-            for bullet in (
-                self.bullets.sprites()
-            ):  # Atualiza a posição de cada projétil no grupo de projéteis
-                bullet.draw_bullet()  # Desenha cada projétil na tela
+            # Atualiza os projéteis
+            self._update_bullets()
 
-                # Atualiza a posição de cada projétil no grupo de projéteis
-            self.bullets.update()
+            # Atualiza os alienígenas
+            self._update_aliens()
 
-            # Verifica se algum projétil saiu da tela
-            for bullet in self.bullets.copy():
-                if bullet.rect.bottom <= 0:
-                    # Remove o projétil que saiu da tela
-                    self.bullets.remove(bullet)
-
-            # Verifica se algum projétil atingiu um alienígena
-            # Em caso afirmativo, remove o projétil e o alienígena atingido
-            self._check_bullet_alien_collisions()
-
-            for alien in self.aliens.sprites():
-                if (
-                    alien.check_edges()
-                ):  # Verifica se algum alienígena atingiu a borda da tela
-                    for alien in (
-                        self.aliens.sprites()
-                    ):  # Atualiza a posição de cada alienígena no grupo de alienígenas
-                        alien.rect.y += self.settings.fleet_drop_speed  # Move cada alienígena para baixo com base na velocidade de descida da frota
-                    self.settings.fleet_direction *= -1  # Inverte a direção da frota para que os alienígenas se movam para o lado oposto na próxima atualização
-                    break  # Sai do loop após encontrar o primeiro alienígena que atingiu a borda da tela
-
-            # Torna visível a tela mais recente
-            pygame.display.flip()
-
-            self.bullets.update()  # Atualiza a posição de cada projétil no grupo de projéteis
-
-            self.aliens.update()  # Atualiza a posição de cada alienígena no grupo de alienígenas
-
-            if pygame.sprite.spritecollideany(
-                self.ship, self.aliens
-            ):  # Verifica se a nave colidiu com algum alienígena
-                print(
-                    "A nave foi atingida!"
-                )  # Imprime uma mensagem no console indicando que a nave foi atingida
-                sys.exit()  # Encerra o jogo
+            # Atualiza os elementos visuais do jogo
+            self._update_screen()
 
 
 if __name__ == "__main__":
