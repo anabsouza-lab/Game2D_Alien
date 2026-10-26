@@ -1,5 +1,6 @@
 
 import sys
+from typing import Protocol
 
 import pygame
 from pygame.sprite import Group
@@ -11,6 +12,13 @@ from game_event_handler import GameEventHandler
 from settings import Settings
 from ship import Ship
 
+
+class EventHandler(Protocol):
+    """Contrato para o tratamento dos eventos do jogo."""
+
+    def check_events(self) -> None:
+        """Processa os eventos do jogo."""
+        ...
 
 class AlienInvasion:
     """Gerencia o jogo e seus comportamentos."""
@@ -35,7 +43,7 @@ class AlienInvasion:
         self.bullets: Group[Bullet] = pygame.sprite.Group()
         self.aliens: Group[Alien] = pygame.sprite.Group()
                 # Classe responsável pelo tratamento dos eventos do jogo
-        self.event_handler = GameEventHandler(
+        self.event_handler: EventHandler = GameEventHandler(
             self.screen,
             self.settings,
             self.ship,
