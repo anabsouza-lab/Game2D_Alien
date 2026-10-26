@@ -56,6 +56,10 @@ class AlienInvasion:
                 alien.rect.y = int(alien_height + 2 * alien_height * row_number)
                 self.aliens.add(alien)
 
+    def _check_bullet_alien_collisions(self) -> None:
+        """Verifica colisões entre projéteis e alienígenas."""
+        pygame.sprite.groupcollide(self.bullets, self.aliens, True, True)
+
     def run_game(self) -> None:
         """Cria um laço de repetição para a tela sempre ficar visível até
         que o usuário decida fechar a janela."""
@@ -113,22 +117,18 @@ class AlienInvasion:
             ):  # Atualiza a posição de cada projétil no grupo de projéteis
                 bullet.draw_bullet()  # Desenha cada projétil na tela
 
-            self.bullets.update()  # Atualiza a posição de cada projétil no grupo de projéteis
-            for (
-                bullet
-            ) in self.bullets.copy():  # Verifica se algum projétil saiu da tela
-                if (
-                    bullet.rect.bottom <= 0
-                ):  # Se o projétil saiu da tela (parte inferior do retângulo do projétil é menor ou igual a 0)
-                    self.bullets.remove(
-                        bullet
-                    )  # Remove o projétil do grupo de projéteis
+                # Atualiza a posição de cada projétil no grupo de projéteis
+            self.bullets.update()
+
+            # Verifica se algum projétil saiu da tela
+            for bullet in self.bullets.copy():
+                if bullet.rect.bottom <= 0:
+                    # Remove o projétil que saiu da tela
+                    self.bullets.remove(bullet)
 
             # Verifica se algum projétil atingiu um alienígena
             # Em caso afirmativo, remove o projétil e o alienígena atingido
-            pygame.sprite.groupcollide(
-                self.bullets, self.aliens, True, True
-            )  # Verifica as colisões entre os projéteis e os alienígenas, removendo ambos quando uma colisão é detectada
+            self._check_bullet_alien_collisions()
 
             for alien in self.aliens.sprites():
                 if (
